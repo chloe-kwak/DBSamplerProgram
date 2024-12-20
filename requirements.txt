@@ -1,0 +1,9 @@
+boto3>=1.26.0
+jupyter>=1.0.0
+pandas>=1.5.0
+numpy>=1.23.0
+requests>=2.28.0
+python-dotenv>=0.21.0
+gremlinpython>=3.6.0
+opensearch-py>=2.0.0
+redis>=4.3.0
