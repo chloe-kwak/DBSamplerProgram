@@ -55,12 +55,23 @@ DB Sampler Program은 AWS의 주요 데이터베이스 서비스들을 실습을
 
 ## 시작하기
 
-1. 필요한 패키지 설치:
+1. Amazon SageMaker AI의 JupyterLab 환경 설정:
+   - JupyterLab에서 터미널을 엽니다.
+   - SageMaker 디렉토리로 이동:
+   ```bash
+   cd SageMaker
+   ```
+   - 실습 자료 다운로드:
+   ```bash
+   git clone https://github.com/chloe-kwak/DBSamplerProgram.git
+   ```
+
+2. 필요한 패키지 설치:
 ```bash
 pip install -r requirements.txt -U
 ```
 
-2. 노트북의 지시사항을 따라 실습을 진행합니다.
+3. 노트북의 지시사항을 따라 실습을 진행합니다.
 - Amazon SageMaker AI의 JupyterLab 에서 실습 합니다.
 
 ## 참고사항
