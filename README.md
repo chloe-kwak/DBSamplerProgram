@@ -59,7 +59,7 @@ DB Sampler Program은 AWS의 주요 데이터베이스 서비스들을 실습을
 
 1. CloudFormation 스택 생성:
    - AWS 콘솔에서 CloudFormation 서비스로 이동
-   - '스택 생성' > '새 리소스 사용' 선택
+   - 'Create stack' > 'With new resources (standard)' 선택 > Specify template에서 'Upload a template file' 선택
    - 'db-sampler-cf-template.yaml' 파일 업로드
    - 스택 이름 입력 후 생성
 
