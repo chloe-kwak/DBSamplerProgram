@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'DB Sampler HOL CloudFormation Template - IAM roles and SageMaker Notebook'
+Resources:
+  NotebookInstanceLifecycleConfig:
+    Type: AWS::SageMaker::NotebookInstanceLifecycleConfig
+    Properties:
+      OnStart:
+        - Content:
+            Fn::Base64: |
+              #!/bin/bash
+              cd /home/ec2-user/SageMaker
+              git clone https://github.com/chloe-kwak/DBSamplerProgram.git
+              chown -R ec2-user:ec2-user DBSamplerProgram
+              cd DBSamplerProgram
+              pip install -r requirements.txt -U
+
+  NotebookInstance:
+    Type: AWS::SageMaker::NotebookInstance
+    Properties:
+      InstanceType: "ml.t3.xlarge"
+      DirectInternetAccess: "Enabled"
+      NotebookInstanceName: "DBSampler-Notebook"
+      PlatformIdentifier: "notebook-al2-v2"
+      LifecycleConfigName: 
+        Fn::GetAtt:
+          - NotebookInstanceLifecycleConfig
+          - NotebookInstanceLifecycleConfigName
+      RoleArn: 
+        Fn::GetAtt: 
+          - SageMakerRole
+          - Arn
+      VolumeSizeInGB: 100
+
+  SageMakerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: My-SageMakerRole
+      Path: "/"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonS3FullAccess"
+        - "arn:aws:iam::aws:policy/IAMFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonOpenSearchServiceFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess"
+        - "arn:aws:iam::aws:policy/NeptuneFullAccess"
+        - "arn:aws:iam::aws:policy/AmazonElastiCacheFullAccess"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - sagemaker.amazonaws.com
+          Action:
+            - sts:AssumeRole
