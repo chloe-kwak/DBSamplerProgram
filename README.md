@@ -29,8 +29,7 @@ DB Sampler Program은 AWS의 주요 데이터베이스 서비스들을 실습을
 - 전문 검색, 로그 분석 및 생성형AI RAG의 Vector Store
 - 실습 내용:
   - IMDB 데이터 인덱싱
-  - 검색 기능 구현
-  - 보안 설정
+  - IMDB 데이터 쿼리
 
 ### 4. Redis (ElastiCache)
 - 인메모리 캐시
