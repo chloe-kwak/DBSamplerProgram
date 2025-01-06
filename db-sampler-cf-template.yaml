@@ -8,16 +8,18 @@ Resources:
         - Content:
             Fn::Base64: |
               #!/bin/bash
+              set -e
+
               cd /home/ec2-user/SageMaker
-              git clone https://github.com/chloe-kwak/DBSamplerProgram.git
-              chown -R ec2-user:ec2-user DBSamplerProgram
-              cd DBSamplerProgram
-              pip install -r requirements.txt -U
+
+              # git clone만 수행
+              sudo -u ec2-user git clone https://github.com/chloe-kwak/DBSamplerProgram.git
+              sudo chown -R ec2-user:ec2-user DBSamplerProgram
 
   NotebookInstance:
     Type: AWS::SageMaker::NotebookInstance
     Properties:
-      InstanceType: "ml.t3.xlarge"
+      InstanceType: "ml.t3.2xlarge"
       DirectInternetAccess: "Enabled"
       NotebookInstanceName: "DBSampler-Notebook"
       PlatformIdentifier: "notebook-al2-v2"
