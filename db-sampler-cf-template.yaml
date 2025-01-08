@@ -1,6 +1,87 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'DB Sampler HOL CloudFormation Template - IAM roles and SageMaker Notebook'
+Description: 'SageMaker Notebook and Lambda with EC2 VPC information'
+
 Resources:
+  # Lambda 역할 정의
+  LambdaInvokeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: "AllowEC2Describe"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeSubnets
+                Resource: "*"
+
+  # Lambda 함수 정의
+  LambdaInvokeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.lambda_handler
+      Role: 
+        Fn::GetAtt:
+          - LambdaInvokeRole
+          - Arn
+      FunctionName: "get-default-vpc-and-subnet2"
+      Runtime: python3.12
+      Timeout: 30  # Lambda 실행 시간 제한 (초)
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse  # CloudFormation 응답을 처리하는 라이브러리
+
+          def lambda_handler(event, context):
+              try:
+                  ec2 = boto3.client('ec2')
+                  
+                  # Default VPC 찾기
+                  vpcs = ec2.describe_vpcs(Filters=[{'Name': 'isDefault', 'Values': ['true']}])
+                  if not vpcs['Vpcs']:
+                      raise Exception("Default VPC not found.")
+                  
+                  default_vpc_id = vpcs['Vpcs'][0]['VpcId']
+                  
+                  # Default VPC에 속한 서브넷 찾기
+                  subnets = ec2.describe_subnets(Filters=[
+                      {'Name': 'vpc-id', 'Values': [default_vpc_id]},
+                      {'Name': 'availabilityZone', 'Values': ['ap-northeast-2a']}
+                  ])
+                  if not subnets['Subnets']:
+                      raise Exception("No subnets found in the 'ap-northeast-2a' availability zone for the default VPC.")
+                  
+                  subnet_id = subnets['Subnets'][0]['SubnetId']
+                  
+                  # CloudFormation에 성공 상태 반환
+                  response_data = {
+                      'VpcId': default_vpc_id,
+                      'SubnetId': subnet_id
+                  }
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
+              except Exception as e:
+                  # 실패 상태 반환
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {}, str(e))
+
+  # Custom Resource 정의
+  VPCSubnetCustomResource:
+    Type: Custom::GetVPCSubnet
+    Properties:
+      ServiceToken: 
+        Fn::GetAtt:
+          - LambdaInvokeFunction
+          - Arn
+
+  # SageMaker Notebook 인스턴스를 위한 라이프사이클 설정
   NotebookInstanceLifecycleConfig:
     Type: AWS::SageMaker::NotebookInstanceLifecycleConfig
     Properties:
@@ -9,13 +90,31 @@ Resources:
             Fn::Base64: |
               #!/bin/bash
               set -e
-
               cd /home/ec2-user/SageMaker
-
               # git clone만 수행
               sudo -u ec2-user git clone https://github.com/chloe-kwak/DBSamplerProgram.git
               sudo chown -R ec2-user:ec2-user DBSamplerProgram
 
+  # 보안 그룹 정의
+  NotebookInstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for SageMaker notebook instance"
+      VpcId: 
+        Fn::GetAtt:
+          - VPCSubnetCustomResource
+          - VpcId
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: "8182"  # Neptune Gremlin 포트
+          ToPort: "8182"
+          CidrIp: "0.0.0.0/0"
+        - IpProtocol: "tcp"
+          FromPort: "6379"  # Redis 포트
+          ToPort: "6379"
+          CidrIp: "0.0.0.0/0"
+
+  # SageMaker Notebook 인스턴스 정의
   NotebookInstance:
     Type: AWS::SageMaker::NotebookInstance
     Properties:
@@ -32,7 +131,14 @@ Resources:
           - SageMakerRole
           - Arn
       VolumeSizeInGB: 100
+      SubnetId: 
+        Fn::GetAtt: 
+          - VPCSubnetCustomResource
+          - SubnetId
+      SecurityGroupIds:
+        - Ref: NotebookInstanceSecurityGroup
 
+  # SageMaker 역할
   SageMakerRole:
     Type: AWS::IAM::Role
     Properties:
@@ -55,3 +161,17 @@ Resources:
             - sagemaker.amazonaws.com
           Action:
             - sts:AssumeRole
+
+Outputs:
+  VpcId:
+    Description: Default VPC ID
+    Value: 
+      Fn::GetAtt:
+        - VPCSubnetCustomResource
+        - VpcId
+  SubnetId:
+    Description: Default Subnet ID
+    Value: 
+      Fn::GetAtt:
+        - VPCSubnetCustomResource
+        - SubnetId
