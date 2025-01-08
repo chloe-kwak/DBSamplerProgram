@@ -7,3 +7,4 @@ python-dotenv>=0.21.0
 gremlinpython>=3.6.0
 opensearch-py>=2.0.0
 redis>=4.3.0
+ksuid>=1.3
